@@ -1,0 +1,200 @@
+# API Gateway - Development Configuration Example
+# This file contains example configurations for different environments
+
+# ============ DEVELOPMENT PROFILE ============
+# Use this profile for local development
+# Run with: mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  
+  application:
+    name: api-gateway
+  
+  cloud:
+    gateway:
+      routes:
+        # Auth Service
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+        
+        # User Service
+        - id: user-service-public
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/register,/api/users/login
+            - Method=POST
+        
+        - id: user-service-protected
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+            - Method=GET,PUT,DELETE
+      
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - http://localhost:3000
+              - http://localhost:3001
+              - http://localhost:8080
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: '*'
+            exposedHeaders:
+              - Authorization
+              - X-User-Id
+              - X-User-Email
+              - X-User-Role
+            maxAge: 3600
+            allowCredentials: true
+
+server:
+  port: 8080
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    preferIpAddress: true
+    leaseRenewalIntervalInSeconds: 10
+
+jwt:
+  secret: dev-secret-key-for-jwt-token-generation-should-be-at-least-32-characters-long
+  expiration: 3600000
+
+logging:
+  level:
+    root: INFO
+    com.example.api_gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+---
+# ============ PRODUCTION PROFILE ============
+# Use this profile for production deployment
+# Run with: mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=prod"
+
+spring:
+  config:
+    activate:
+      on-profile: prod
+  
+  application:
+    name: api-gateway
+  
+  cloud:
+    gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - https://yourdomain.com
+              - https://admin.yourdomain.com
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+            allowedHeaders: '*'
+            exposedHeaders:
+              - Authorization
+              - X-User-Id
+              - X-User-Email
+              - X-User-Role
+            maxAge: 3600
+            allowCredentials: true
+
+server:
+  port: 8080
+  ssl:
+    key-store-type: PKCS12
+    key-store: classpath:keystore.p12
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:changeme}
+    key-alias: tomcat
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://eureka-server:8761/eureka
+  instance:
+    preferIpAddress: true
+    leaseRenewalIntervalInSeconds: 10
+    statusPageUrlPath: /actuator/health
+
+jwt:
+  secret: ${JWT_SECRET:change-this-in-production-use-environment-variable}
+  expiration: 3600000
+
+logging:
+  level:
+    root: WARN
+    com.example.api_gateway: INFO
+    org.springframework.cloud.gateway: INFO
+  file:
+    name: logs/api-gateway.log
+    max-size: 10MB
+    max-history: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+---
+# ============ TESTING PROFILE ============
+# Use this profile for testing
+# Run with: mvn test -Dspring.profiles.active=test
+
+spring:
+  config:
+    activate:
+      on-profile: test
+  
+  application:
+    name: api-gateway
+  
+  cloud:
+    gateway:
+      routes: []
+
+server:
+  port: 0 # Random port for testing
+
+eureka:
+  client:
+    enabled: false
+
+jwt:
+  secret: test-secret-key-for-jwt-token-generation-should-be-at-least-32-characters-long
+  expiration: 3600000
+
+logging:
+  level:
+    root: INFO
+    com.example.api_gateway: DEBUG
