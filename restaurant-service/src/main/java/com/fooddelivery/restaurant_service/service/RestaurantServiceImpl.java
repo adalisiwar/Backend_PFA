@@ -4,7 +4,12 @@ import com.fooddelivery.restaurant_service.dto.RestaurantDTO;
 import com.fooddelivery.restaurant_service.model.Restaurant;
 import com.fooddelivery.restaurant_service.repository.RestaurantRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,22 +38,47 @@ public class RestaurantServiceImpl implements RestaurantService {
         return mapToDTO(saved);
     }
 
-    @Override
-    public RestaurantDTO updateRestaurant(Long id, RestaurantDTO dto) {
-        Restaurant restaurant = restaurantRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found with id: " + id));
-
-        restaurant.setName(dto.getName());
-        restaurant.setEmail(dto.getEmail());
-        restaurant.setAddress(dto.getAddress());
-        restaurant.setPhone(dto.getPhone());
-        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
-            restaurant.setPassword(passwordEncoder.encode(dto.getPassword()));
-        }
-
-        Restaurant updated = restaurantRepository.save(restaurant);
-        return mapToDTO(updated);
+@Override
+@PreAuthorize("hasRole('RESTAURANT') or hasRole('ADMIN')")
+public RestaurantDTO updateRestaurant(Long id, RestaurantDTO restaurantDTO, Authentication authentication) {
+    // Admin bypass
+    if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+        return this.updateRestaurantData(id, restaurantDTO);
     }
+
+    String loggedInUsername = authentication.getName();
+    RestaurantDTO existing = this.getRestaurantById(id);
+    if (!existing.getEmail().equals(loggedInUsername)) {
+        throw new AccessDeniedException("You can only update your own profile");
+    }
+
+    return this.updateRestaurantData(id, restaurantDTO);
+}
+
+private RestaurantDTO updateRestaurantData(Long id, RestaurantDTO restaurantDTO) {
+    Restaurant restaurant = restaurantRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Restaurant not found with id: " + id));
+    
+    if (restaurantDTO.getName() != null) {
+        restaurant.setName(restaurantDTO.getName());
+    }
+    if (restaurantDTO.getEmail() != null) {
+        restaurant.setEmail(restaurantDTO.getEmail());
+    }
+    if (restaurantDTO.getAddress() != null) {
+        restaurant.setAddress(restaurantDTO.getAddress());
+    }
+    if (restaurantDTO.getPhone() != null) {
+        restaurant.setPhone(restaurantDTO.getPhone());
+    }
+    if (restaurantDTO.getPassword() != null) {
+        restaurant.setPassword(passwordEncoder.encode(restaurantDTO.getPassword()));
+    }
+    
+    Restaurant updated = restaurantRepository.save(restaurant);
+    return mapToDTO(updated);
+}
+
 
     @Override
     public void deleteRestaurant(Long id) {
@@ -80,7 +110,7 @@ public class RestaurantServiceImpl implements RestaurantService {
                 .email(restaurant.getEmail())
                 .address(restaurant.getAddress())
                 .phone(restaurant.getPhone())
-                .password(restaurant.getPassword())
+                // password intentionally omitted for security
                 .build();
     }
 }

@@ -1,6 +1,7 @@
 package com.fooddelivery.restaurant_service.service;
 
 import com.fooddelivery.restaurant_service.dto.RestaurantDTO;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
@@ -10,8 +11,7 @@ public interface RestaurantService {
     RestaurantDTO addRestaurant(RestaurantDTO dto);
 
     // Update existing restaurant
-    RestaurantDTO updateRestaurant(Long id, RestaurantDTO dto);
-
+RestaurantDTO updateRestaurant(Long id, RestaurantDTO restaurantDTO, Authentication authentication);
     // Delete restaurant
     void deleteRestaurant(Long id);
 

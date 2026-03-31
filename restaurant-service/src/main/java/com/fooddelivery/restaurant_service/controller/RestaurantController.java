@@ -38,21 +38,14 @@ public class RestaurantController {
     }
 
     // Update a restaurant
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasRole('RESTAURANT') or hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<RestaurantDTO> updateRestaurant(
             @PathVariable Long id,
             @RequestBody RestaurantDTO restaurantDTO,
             Authentication authentication) {
 
-        String loggedInUsername = authentication.getName(); // returns sub claim safely
-
-        RestaurantDTO existing = restaurantService.getRestaurantById(id);
-        if (!existing.getEmail().equals(loggedInUsername)) {
-            throw new AccessDeniedException("You can only update your own profile");
-        }
-
-        RestaurantDTO updatedRestaurant = restaurantService.updateRestaurant(id, restaurantDTO);
+        RestaurantDTO updatedRestaurant = restaurantService.updateRestaurant(id, restaurantDTO, authentication);
         return ResponseEntity.ok(updatedRestaurant);
     }
 
